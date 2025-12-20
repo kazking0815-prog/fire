@@ -3,10 +3,10 @@ import pandas as pd
 import json
 import os
 import numpy as np
-import plotly.graph_objects as go # Plotlyをインポート
+import plotly.graph_objects as go
 
 # ページ設定 (ワイド表示)
-st.set_page_config(page_title="FIREシミュレーター (支出変動版)", layout="wide")
+st.set_page_config(page_title="FIREシミュレーター (Web版)", layout="wide")
 
 # --- CSSでサイドバーの幅を広げる ---
 st.markdown(
@@ -21,46 +21,51 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- 設定ファイル管理 ---
-CONFIG_FILE = 'fire_config.json'
-
-def load_config():
-    if os.path.exists(CONFIG_FILE):
+# --- 設定ファイル管理 (Web版対応: アップロード機能) ---
+# ※リポジトリ内にfire_config.jsonがある場合は初期値として使います
+def load_default_config():
+    if os.path.exists('fire_config.json'):
         try:
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            with open('fire_config.json', 'r', encoding='utf-8') as f:
                 return json.load(f)
         except:
             return {}
     return {}
 
-def save_config(data):
-    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-# --- 設定リセット機能 ---
-if 'reset_confirmation' not in st.session_state:
-    st.session_state.reset_confirmation = False
-
-config = load_config()
-
-st.title("🔥 FIREシミュレーター (v6.1: グラフ高さ調整)")
-st.markdown("サイドバーの「📈 経済・リスク」タブで、グラフの縦幅を変更できるようにしました。")
+st.title("🔥 FIREシミュレーター (Web版)")
+st.markdown("設定データを **JSONファイル** として手元のPCに保存・読込できるバージョンです。")
 
 # --- サイドバーヘッダー ---
 st.sidebar.header("📝 設定メニュー")
 
-if st.sidebar.button("🗑️ 設定を初期化する"):
+# ★設定ファイルのアップロード機能
+uploaded_file = st.sidebar.file_uploader("📂 前回の設定を読み込む", type=["json"])
+
+if uploaded_file is not None:
+    try:
+        config = json.load(uploaded_file)
+        st.sidebar.success("設定を読み込みました！")
+    except:
+        st.sidebar.error("ファイルの読み込みに失敗しました")
+        config = load_default_config()
+else:
+    # アップロードがない場合はデフォルト(または空)
+    config = load_default_config()
+
+# リセットボタン
+if 'reset_confirmation' not in st.session_state:
+    st.session_state.reset_confirmation = False
+
+if st.sidebar.button("🗑️ 入力を初期化する"):
     st.session_state.reset_confirmation = True
 
 if st.session_state.reset_confirmation:
-    st.sidebar.warning("⚠️ 本当に初期化しますか？")
+    st.sidebar.warning("⚠️ 初期値に戻しますか？")
     col_res1, col_res2 = st.sidebar.columns(2)
     with col_res1:
-        if st.button("はい、初期化します", type="primary"):
-            if os.path.exists(CONFIG_FILE):
-                os.remove(CONFIG_FILE)
+        if st.button("はい", type="primary"):
             st.session_state.reset_confirmation = False
-            st.cache_data.clear()
+            # ページをリロードして初期状態(アップロードなし)に戻す
             st.rerun()
     with col_res2:
         if st.button("キャンセル"):
@@ -74,7 +79,7 @@ def get_val(key, default):
     return config.get(key, default)
 
 # ==========================================
-# タブ1: 基本設定 (支出スケジュールの導入)
+# タブ1: 基本設定
 # ==========================================
 with tab1:
     st.subheader("基本プロフィール")
@@ -127,8 +132,7 @@ with tab1:
     
     st.markdown("---")
     st.subheader("基本生活費 (年齢別)")
-    st.caption("年齢ごとの年間支出額を設定してください。活動的な時期は多めに、高齢期は少なめになど調整できます。")
-    st.caption("※FIRE後の期間に適用されます。")
+    st.caption("年齢ごとの年間支出額を設定してください。")
     
     if "expense_schedule" in config:
         df_exp_sched_init = pd.DataFrame(config["expense_schedule"])
@@ -336,7 +340,7 @@ with tab6:
         risk_std = 0
         sim_count = 1
 
-# --- 保存ボタン ---
+# --- 設定収集 ---
 current_config_state = {
     "current_age": current_age,
     "life_expectancy": life_expectancy,
@@ -346,10 +350,7 @@ current_config_state = {
     "current_asset_ideco": current_asset_ideco,
     "current_asset_taxable": current_asset_taxable,
     "current_asset_cash": current_asset_cash,
-    
-    # NEW: 支出スケジュールを保存
     "expense_schedule": edited_expense_schedule.to_dict('records'),
-    
     "investment_schedule_v4": edited_invest_schedule.to_dict('records'),
     "edu_master": edited_edu_master.to_dict('records'),
     "child_edu_plans": child_plans,
@@ -377,15 +378,20 @@ current_config_state = {
     "portfolio_settings": []
 }
 
-has_changes = current_config_state != config
+# --- 保存機能 (Web版対応: ダウンロードボタン) ---
 st.sidebar.markdown("---")
-save_btn_type = "primary" if has_changes else "secondary"
-save_label = "💾 設定を保存する (変更あり)" if has_changes else "💾 設定を保存する"
+st.sidebar.write("💾 **設定を保存する**")
+st.sidebar.caption("現在の入力内容をJSONファイルとして保存します。次回はこのファイルを「前回の設定を読み込む」へアップロードしてください。")
 
-if st.sidebar.button(save_label, type=save_btn_type):
-    save_config(current_config_state)
-    st.sidebar.success("保存しました！")
-    st.rerun()
+json_str = json.dumps(current_config_state, indent=4, ensure_ascii=False)
+
+st.sidebar.download_button(
+    label="📥 設定ファイル(JSON)を保存",
+    data=json_str,
+    file_name='fire_config.json',
+    mime='application/json',
+    type="primary"
+)
 
 # ==========================================
 # シミュレーション実行ロジック
@@ -693,7 +699,7 @@ if use_monte_carlo:
         fig_mc.add_vline(x=target_fire_age, line_width=2, line_dash="dash", line_color="orange", annotation_text="FIRE開始")
         
         fig_mc.update_layout(
-            height=graph_height, # ★高さをスライダーと連動
+            height=graph_height, # スライダーと連動
             xaxis_title="年齢", yaxis_title="資産額 (万円)",
             hovermode="x unified",
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
@@ -746,7 +752,7 @@ else:
     fig_st.add_vline(x=target_fire_age, line_width=2, line_dash="dash", line_color="red", annotation_text="FIRE開始")
     
     fig_st.update_layout(
-        height=graph_height, # ★高さをスライダーと連動
+        height=graph_height, # スライダーと連動
         xaxis_title="年齢", yaxis_title="資産額 (万円)",
         hovermode="x unified",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
