@@ -16,7 +16,7 @@ export default function RootLayout({
     <html lang="ja">
       <body>
         <header className="border-b border-leaf-100 bg-white">
-          <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+          <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
             <Link href="/" className="text-xl font-bold text-leaf-700">
               🌱 水耕栽培アシスタント
             </Link>
@@ -28,8 +28,8 @@ export default function RootLayout({
             </Link>
           </div>
         </header>
-        <main className="mx-auto max-w-4xl px-4 py-6">{children}</main>
-        <footer className="mx-auto max-w-4xl px-4 py-8 text-center text-xs text-slate-400">
+        <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+        <footer className="mx-auto max-w-5xl px-4 py-8 text-center text-xs text-slate-400">
           Powered by Claude · Next.js
         </footer>
       </body>
