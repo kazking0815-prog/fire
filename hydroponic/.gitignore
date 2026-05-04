@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+
+.env
+.env.local
+.env*.local
+
+data/db.json
+public/uploads/*
+!public/uploads/.gitkeep
+
+*.log
+.DS_Store
+next-env.d.ts
